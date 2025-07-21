@@ -10,29 +10,23 @@ const passport = require('passport');
 const venom    = require('venom-bot');
 const fetch    = globalThis.fetch || require('node-fetch');
 
+//
+// ————— Constants & Globals —————
 const SESSION_NAME = 'session-name';
-const CHROME_PATH  = process.env.CHROME_PATH || '/usr/bin/chromium-browser';
+let qrCodeBase64  = null;
+let aiConfig      = { businessName:'', industry:'', instructions:'' };
+const sessions    = {}; // per‑JID conversation history
 
 //
-// ————— Passport & MongoDB —————
+// ————— MongoDB & Passport —————
+// drop the now‑deprecated mongoose options
 require('./config/passport')(passport);
-
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser:    true,
-  useUnifiedTopology: true
-})
-.then(() => console.log('✅ MongoDB connected'))
-.catch(err => console.error('❌ MongoDB error:', err));
+mongoose.connect(process.env.MONGO_URI)
+  .then(()=> console.log('✅ MongoDB connected'))
+  .catch(e=> console.error('❌ MongoDB error:', e));
 
 //
-// ————— Global state —————
-const app = express();
-let qrCodeBase64 = null;
-let aiConfig     = { businessName: '', industry: '', instructions: '' };
-const sessions   = {}; // per‑JID conversation history
-
-//
-// ————— DeepSeek helper —————
+// ————— DeepSeek Helper —————
 async function askDeepSeek(userInput, conversationHistory = []) {
   if (!aiConfig.businessName) {
     return '🤖 Please complete setup at /setup first.';
@@ -44,9 +38,9 @@ ${aiConfig.instructions}
   `.trim();
 
   const messages = [
-    { role: 'system', content: systemPrompt },
+    { role:'system',  content: systemPrompt },
     ...conversationHistory,
-    { role: 'user',   content: userInput }
+    { role:'user',    content: userInput }
   ];
 
   try {
@@ -62,22 +56,21 @@ ${aiConfig.instructions}
         messages
       })
     });
-
     if (!res.ok) {
-      console.error('DeepSeek error', res.status, await res.text());
+      console.error('DeepSeek HTTP', res.status, await res.text());
       return '😓 DeepSeek is unavailable.';
     }
-
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content.trim() || '…';
+    const { choices } = await res.json();
+    return choices?.[0]?.message?.content.trim() || '…';
   } catch (err) {
-    console.error('DeepSeek fetch error:', err);
-    return '😓 Something went wrong.';
+    console.error('DeepSeek error:', err);
+    return '😓 Error contacting DeepSeek.';
   }
 }
 
 //
-// ————— Express & middleware —————
+// ————— Express Setup —————
+const app = express();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
@@ -89,7 +82,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
 
-// Expose locals to all views
+// expose to EJS
 app.use((req, res, next) => {
   res.locals.user         = req.user;
   res.locals.success_msg  = req.flash('success_msg');
@@ -109,13 +102,11 @@ app.set('views', path.join(__dirname, 'views'));
 // ————— Routes & Wizard —————
 app.use('/',    require('./routes/index'));
 app.use('/auth', require('./routes/auth'));
-
 const { ensureAuthenticated } = require('./middleware/auth');
 
 app.get('/setup', ensureAuthenticated, (req, res) => {
   res.render('wizard', { title: 'Configure Your Bot' });
 });
-
 app.post('/setup', ensureAuthenticated, (req, res) => {
   aiConfig.businessName = req.body.businessName.trim();
   aiConfig.industry     = req.body.industry;
@@ -124,74 +115,74 @@ app.post('/setup', ensureAuthenticated, (req, res) => {
 });
 
 //
-// ————— Venom‑bot + DeepSeek Integration —————
-venom.create(
-  {
-    session: SESSION_NAME,
-    multidevice: true,
-    puppeteerOptions: {
-      headless:        'new',
+// ————— Venom + DeepSeek Integration —————
+// Persist session tokens under ./tokens so you stay logged in
+// Use the new headless mode and your Chromium binary
+const CHROME_PATH = process.env.CHROME_PATH || (process.platform==='win32'
+  ? 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+  : '/usr/bin/chromium');
+
+venom
+  .create(
+    {
+      session:         SESSION_NAME,
+      multidevice:     true,
+      headless:        'new',         // ← use new headless
+      useChrome:       true,          // ← tell Venom to use your Chrome path
       executablePath:  CHROME_PATH,
-      args: [
+      sessionDataPath: './tokens',    // ← persist tokens here
+      browserArgs: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu'
       ]
+    },
+    // QR callback
+    base64Qrimg => {
+      qrCodeBase64 = base64Qrimg.replace(/^data:image\/png;base64,/, '');
+      console.log('🔄 New QR generated — refresh /setup to scan');
     }
-  },
-  (base64Qrimg) => {
-    qrCodeBase64 = base64Qrimg.replace(/^data:image\/png;base64,/, '');
-    console.log('🔄 New QR generated — visit /setup to scan');
-  },
-  undefined,
-  {
-    logQR:         true,
-    useChrome:     true,
-    disableWelcome:true,
-    autoClose:     false,
-    qrRefreshS:    20,
-    qrTimeout:     300
-  }
-)
-.then(client => {
-  console.log('✅ Venom bot is ready');
+  )
+  .then(client => {
+    console.log('✅ Venom bot ready');
 
-  client.onStateChange(state => {
-    console.log('⚙️ Venom state:', state);
-    if (['CONFLICT','UNPAIRED','UNLAUNCHED'].includes(state)) {
-      client.useHere();
-      console.log('🔄 Reclaimed session');
-    }
-  });
+    client.onStateChange(state => {
+      console.log('⚙️ Venom state:', state);
+      if (['CONFLICT','UNPAIRED','UNLAUNCHED'].includes(state)) {
+        client.useHere();
+        console.log('🔄 Reclaimed session');
+      }
+    });
 
-  client.onMessage(async msg => {
-    const jid  = msg.from;
-    const text = msg.body?.trim();
-    if (!text) return;
+    client.onMessage(async msg => {
+      console.log('📩 Received from', msg.from, ':', msg.body);
+      const jid  = msg.from;
+      const text = msg.body?.trim();
+      if (!text) return;
 
-    sessions[jid] = sessions[jid] || { conversationHistory: [] };
-    const sess = sessions[jid];
+      sessions[jid] = sessions[jid] || { conversationHistory: [] };
+      const sess = sessions[jid];
 
-    sess.conversationHistory.push({ role:'user', content:text });
-    const reply = await askDeepSeek(text, sess.conversationHistory);
+      sess.conversationHistory.push({ role:'user', content: text });
+      const reply = await askDeepSeek(text, sess.conversationHistory);
 
-    try {
-      await client.sendText(jid, reply);
-      console.log('✅ Replied to', jid);
-    } catch (e) {
-      console.error('❌ sendText error:', e);
-    }
+      try {
+        await client.sendText(jid, reply);
+        console.log('✅ Sent reply');
+      } catch (e) {
+        console.error('❌ sendText error:', e);
+      }
 
-    sess.conversationHistory.push({ role:'assistant', content:reply });
-    if (sess.conversationHistory.length > 20) {
-      sess.conversationHistory = sess.conversationHistory.slice(-16);
-    }
-  });
-})
-.catch(err => console.error('❌ Venom init failed:', err));
+      sess.conversationHistory.push({ role:'assistant', content: reply });
+      if (sess.conversationHistory.length > 20) {
+        sess.conversationHistory = sess.conversationHistory.slice(-16);
+      }
+    });
+  })
+  .catch(err => console.error('❌ Venom init failed:', err));
 
 //
-// ————— Start HTTP server —————
+// ————— Start HTTP Server —————
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
