@@ -10,7 +10,7 @@ RUN apk add --no-cache \
     ttf-freefont \
     ca-certificates
 
-# Tell Venom/Puppeteer to use the system Chromium
+# Tell Puppeteer/Venom to use the system Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 ENV NODE_ENV=production
@@ -25,9 +25,9 @@ RUN npm ci --omit=dev --legacy-peer-deps
 # Copy application source
 COPY . .
 
-# Expose ports
+# Expose both your local‑dev port and Render’s injected port
 EXPOSE 3000
 EXPOSE 10000
 
-# Launch the server
+# Start the server
 CMD ["node", "server.js"]
