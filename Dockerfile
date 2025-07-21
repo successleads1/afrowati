@@ -1,33 +1,52 @@
-# Use Node 18 on Alpine
-FROM node:18-alpine
+# 1) Use Debian‑slim (better Chrome compatibility than Alpine)
+FROM node:18-bullseye-slim
 
-# Install system deps for Chromium
-RUN apk add --no-cache \
+# 2) Install Chromium & its deps
+RUN apt-get update && apt-get install -y \
     chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ttf-freefont \
-    ca-certificates
+    ca-certificates \
+    fonts-liberation \
+    libnss3 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxi6 \
+    libxtst6 \
+    libatk1.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libgtk-3-0 \
+    libxrandr2 \
+    libxss1 \
+    libasound2 \
+    libpangocairo-1.0-0 \
+    libpango-1.0-0 \
+    libstdc++6 \
+    lsb-release \
+    xdg-utils \
+  --no-install-recommends && \
+  rm -rf /var/lib/apt/lists/*
 
-# Tell Puppeteer/Venom to use the system Chromium
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-ENV NODE_ENV=production
+# 3) Tell Puppeteer/Venom to use system Chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    NODE_ENV=production
 
-# Create working directory
+# 4) Create & switch to app dir
 WORKDIR /usr/src/app
 
-# Copy package manifests & install production deps
+# 5) Install only prod deps
 COPY package*.json ./
-RUN npm ci --omit=dev --legacy-peer-deps
+RUN npm ci --omit=dev
 
-# Copy application source
+# 6) Copy source
 COPY . .
 
-# Expose both your local‑dev port and Render’s injected port
+# 7) Expose local & Render port
 EXPOSE 3000
 EXPOSE 10000
 
-# Start the server
+# 8) Start
 CMD ["node", "server.js"]
