@@ -12,7 +12,7 @@ const fetch    = globalThis.fetch || require('node-fetch');
 const PORT         = process.env.PORT || 3000;
 const SESSION_NAME = 'session-name';
 
-// ── MongoDB & Passport Setup ──
+// MongoDB & Passport
 require('./config/passport')(passport);
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser:    true,
@@ -21,13 +21,13 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log('✅ MongoDB connected'))
 .catch(err => console.error('❌ MongoDB error:', err));
 
-// ── Global State ──
+// App & global state
 const app = express();
 let aiConfig     = { businessName:'', industry:'', instructions:'' };
 let qrCodeBase64 = null;
 const sessions   = {};
 
-// ── DeepSeek Helper ──
+// DeepSeek helper
 async function askDeepSeek(userInput, conversationHistory = []) {
   if (!aiConfig.businessName) {
     return '🤖 Please complete the setup form at /setup before chatting.';
@@ -68,7 +68,7 @@ async function askDeepSeek(userInput, conversationHistory = []) {
   }
 }
 
-// ── Express Setup ──
+// Express setup
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
@@ -80,7 +80,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
 
-// Expose template locals
+// Expose to templates
 app.use((req, res, next) => {
   res.locals.user         = req.user;
   res.locals.success_msg  = req.flash('success_msg');
@@ -96,7 +96,7 @@ app.use((req, res, next) => {
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// ── Routes ──
+// Routes
 app.use('/',     require('./routes/index'));
 app.use('/auth', require('./routes/auth'));
 const { ensureAuthenticated } = require('./middleware/auth');
@@ -104,6 +104,7 @@ const { ensureAuthenticated } = require('./middleware/auth');
 app.get('/setup', ensureAuthenticated, (req, res) => {
   res.render('wizard', { title: 'Configure Your Bot' });
 });
+
 app.post('/setup', ensureAuthenticated, (req, res) => {
   aiConfig.businessName = req.body.businessName.trim();
   aiConfig.industry     = req.body.industry;
@@ -111,7 +112,7 @@ app.post('/setup', ensureAuthenticated, (req, res) => {
   res.redirect('/setup');
 });
 
-// ── Start Venom, then Express ──
+// Start Venom, then start Express
 venom.create(
   {
     session:     SESSION_NAME,
@@ -125,15 +126,14 @@ venom.create(
     ]
   },
   (base64Qrimg, asciiQR) => {
-    // QR callback: store for /setup & log ASCII fallback
     qrCodeBase64 = base64Qrimg.replace(/^data:image\/png;base64,/, '');
-    console.log('🔄 New QR — refresh /setup to view\n', asciiQR);
+    console.log('🔄 New QR — scan or refresh /setup\n', asciiQR);
   }
 )
 .then(client => {
   console.log('✅ Venom is ready');
 
-  // **Bind to 0.0.0.0** so Render (and Docker) can route in
+  // Bind to 0.0.0.0 so Render’s router can reach you
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server listening on http://0.0.0.0:${PORT}`);
   });
@@ -147,8 +147,8 @@ venom.create(
   });
 
   client.onMessage(async msg => {
-    const jid  = msg.from;
-    const txt  = msg.body?.trim();
+    const jid = msg.from;
+    const txt = msg.body?.trim();
     if (!txt) return;
 
     const sess = sessions[jid] = sessions[jid] || { conversationHistory: [] };
@@ -165,8 +165,8 @@ venom.create(
 })
 .catch(err => {
   console.error('❌ Venom init failed:', err.message || err);
-  // Still bring up your HTTP server so users can hit /setup
-  app.listen(PORT, '0.0.0.0', () =>
-    console.log(`🚀 Server listening (no WhatsApp) on http://0.0.0.0:${PORT}`)
-  );
+  // Even on failure, start HTTP so /setup works
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server listening (no WhatsApp) on http://0.0.0.0:${PORT}`);
+  });
 });
