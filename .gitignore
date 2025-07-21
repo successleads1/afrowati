@@ -1,0 +1,19 @@
+# Node modules
+node_modules/
+
+# Venom session folders
+tokens/
+session-name/
+vaya-session/
+
+# Env files
+.env
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+
+# OS junk
+.DS_Store
+Thumbs.db

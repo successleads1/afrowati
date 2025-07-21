@@ -1,0 +1,99 @@
+<% include('partials/header') %>
+
+<style>
+  :root {
+    --wa-green: #25d366;
+    --wa-dark:  #128C7E;
+    --wa-light: #e5fff5;
+  }
+
+  /* Full‑screen hero */
+  .landing-hero {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: var(--wa-green);
+    color: #fff;
+    text-align: center;
+    animation: bgPulse 6s ease-in-out infinite;
+  }
+  @keyframes bgPulse {
+    0%,100% { filter: brightness(1); }
+    50%      { filter: brightness(1.08); }
+  }
+
+  /* Big Title & Subtitle */
+  .landing-hero h1 {
+    font-size: 4.5rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    line-height: 1.1;
+  }
+  .landing-hero p {
+    font-size: 2rem;
+    margin-bottom: 3rem;
+    max-width: 700px;
+  }
+
+  /* Hero Buttons Container */
+  .hero-buttons {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* Hero Buttons */
+  .btn-hero {
+    padding: 1.5rem 3rem;
+    font-size: 1.5rem;
+    border-radius: 2rem;
+    transition: transform .2s, box-shadow .2s, background .2s;
+    min-width: 180px;
+    text-decoration: none;        /* remove underline */
+  }
+  .btn-hero:hover,
+  .btn-hero:focus {
+    text-decoration: none;        /* ensure no underline on hover/focus */
+  }
+
+  .btn-hero.btn-wa {
+    background: linear-gradient(45deg, var(--wa-green), var(--wa-dark));
+    border: none;
+    color: #fff;
+  }
+  .btn-hero.btn-wa:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    background: linear-gradient(45deg, var(--wa-dark), var(--wa-green));
+  }
+
+  .btn-hero.btn-outline-wa {
+    border: 3px solid #fff;
+    background: transparent;
+    color: #fff;
+  }
+  .btn-hero.btn-outline-wa:hover {
+    background: #fff;
+    color: var(--wa-green);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  }
+</style>
+
+<section class="landing-hero">
+  <h1 class="animate__animated animate__fadeInDown">
+    WhatsApp AI Assistant
+  </h1>
+  <p class="animate__animated animate__fadeInUp animate__delay-1s">
+    Start automating customer chats in seconds—scan, configure, boom!
+  </p>
+  <div class="hero-buttons animate__animated animate__zoomIn animate__delay-2s">
+    <a href="/auth/login"    class="btn-hero btn-wa">Login</a>
+    <a href="/auth/register" class="btn-hero btn-outline-wa">Register</a>
+  </div>
+</section>
+
+<% include('partials/footer') %>

@@ -1,0 +1,93 @@
+<% include('partials/header') %>
+
+<style>
+  :root {
+    --wa-green: #25d366;
+    --wa-dark:  #128C7E;
+    --wa-light: #f6fffa;
+  }
+  .register-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wa-light);
+  }
+  .register-card {
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    overflow: hidden;
+    max-width: 400px;
+    width: 100%;
+  }
+  .card-header {
+    background: var(--wa-green);
+    color: #fff;
+    text-align: center;
+    padding: 1.5rem;
+  }
+  .card-body {
+    padding: 2rem;
+    background: #fff;
+  }
+  .btn-wa {
+    background: var(--wa-green);
+    color: #fff;
+    border: none;
+  }
+  .btn-wa:hover { background: var(--wa-dark); }
+  .btn-register {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1.1rem;
+    border-radius: 0.5rem;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .btn-register:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+  }
+</style>
+
+<div class="register-page">
+  <div class="card register-card">
+    <div class="card-header"><h2>Register</h2></div>
+    <div class="card-body">
+      <% if (errors.length) { %>
+        <div class="alert alert-danger">
+          <ul class="mb-0">
+            <% errors.forEach(e => { %><li><%= e.msg %></li><% }) %>
+          </ul>
+        </div>
+      <% } %>
+      <% if (success_msg) { %>
+        <div class="alert alert-success"><%= success_msg %></div>
+      <% } %>
+
+      <form action="/auth/register" method="POST" novalidate>
+        <div class="mb-3">
+          <label class="form-label">Name</label>
+          <input name="name" class="form-control" required value="<%= name %>">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Email</label>
+          <input name="email" type="email" class="form-control" required value="<%= email %>">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Password</label>
+          <input name="password" type="password" class="form-control" required>
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Confirm Password</label>
+          <input name="password2" type="password" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-wa btn-register">Register</button>
+      </form>
+    </div>
+    <div class="card-footer text-center py-3">
+      <small>Already registered? <a href="/auth/login" class="text-wa-dark">Login here</a></small>
+    </div>
+  </div>
+</div>
+
+<% include('partials/footer') %>

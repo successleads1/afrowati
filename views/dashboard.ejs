@@ -1,0 +1,70 @@
+<% include('partials/header') %>
+
+<style>
+  /* Outline button to regenerate QR */
+  .btn-outline-wa {
+    border: 2px solid var(--wa-green);
+    color: var(--wa-green);
+  }
+  .btn-outline-wa:hover {
+    background-color: var(--wa-green);
+    color: #fff;
+  }
+</style>
+
+<div class="container py-5">
+  <!-- Welcome Card -->
+  <div class="row justify-content-center mb-4">
+    <div class="col-md-8 col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <h2 class="card-title">Welcome, <%= user.name %>!</h2>
+          <p class="card-text">
+            Configure your WhatsApp AI assistant or view your QR code below.
+          </p>
+          <a href="/setup" class="btn btn-wa">Configure Your Bot</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR Code Card -->
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <div class="card border-success shadow-sm">
+        <div class="card-header bg-wa text-white">
+          <h5 class="mb-0">WhatsApp QR Code</h5>
+        </div>
+        <div class="card-body text-center">
+          <% if (qr) { %>
+            <img
+              src="data:image/png;base64,<%= qr %>"
+              class="img-fluid mb-3"
+              style="max-width: 250px;"
+              alt="WhatsApp QR Code"
+            />
+            <p class="text-muted">Scan this QR code with WhatsApp to connect.</p>
+            <button
+              type="button"
+              onclick="location.href='/setup'"
+              class="btn btn-outline-wa"
+            >
+              Regenerate QR
+            </button>
+          <% } else { %>
+            <div
+              class="spinner-border text-success mb-3"
+              style="width: 3rem; height: 3rem;"
+              role="status"
+            ></div>
+            <p class="text-muted">
+              QR not ready yet. Please configure your bot and refresh this page.
+            </p>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% include('partials/footer') %>

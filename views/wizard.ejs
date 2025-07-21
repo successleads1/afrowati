@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= title || 'Configure Your Bot' %></title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <style>
+    :root { --wa-green: #25d366; --wa-light: #e5fff5; }
+    body { margin:0; padding:0; background:var(--wa-light); font-family:'Segoe UI',sans-serif; }
+    .container { max-width:600px; margin:2rem auto; padding:1rem; }
+    .card { background:#fff; border-radius:.75rem; box-shadow:0 2px 12px rgba(0,0,0,0.1); padding:1.5rem; }
+    h2 { text-align:center; margin-bottom:1.5rem; font-size:1.75rem; }
+    .nav-pills { display:flex; justify-content:center; gap:.5rem; list-style:none; padding:0; margin-bottom:1.5rem; }
+    .nav-pills .nav-link { padding:.5rem 1rem; border-radius:999px; background:#ccc; color:#333; cursor:default; }
+    .nav-pills .active { background:var(--wa-green); color:#fff; }
+    .step { display:none; animation:fadeIn .5s ease-out; }
+    .step.active { display:block; }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    .form-label { display:block; margin-bottom:.5rem; font-weight:600; }
+    .form-control, select, textarea {
+      width:100%; padding:.75rem; border:1px solid #ccc; border-radius:.5rem;
+      margin-bottom:1rem; font-size:1rem; resize:vertical;
+    }
+    .btn { display:inline-block; padding:.75rem 1.25rem; border:none; border-radius:.5rem;
+      cursor:pointer; font-size:1rem; }
+    .btn-wa { background:var(--wa-green); color:#fff; }
+    .btn-wa:hover { background:#1ebe5a; }
+    .btn-secondary { background:#6c757d; color:#fff; }
+    .btn:disabled { opacity:.6; cursor:not-allowed; }
+    /* Modal */
+    .modal { position:fixed; top:0; left:0; width:100%; height:100%;
+      background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center;
+      visibility:hidden; opacity:0; transition:visibility .3s, opacity .3s; }
+    .modal.show { visibility:visible; opacity:1; }
+    .modal-content { background:#fff; border-radius:.75rem; max-width:90%; width:400px; overflow:hidden; }
+    .modal-header { background:var(--wa-green); color:#fff; padding:.75rem 1rem;
+      display:flex; justify-content:space-between; align-items:center; }
+    .modal-title { margin:0; font-size:1.25rem; }
+    .btn-close { background:none; border:none; font-size:1.25rem; color:#fff; cursor:pointer; }
+    .modal-body { text-align:center; padding:1rem; }
+    .spinner { width:3rem; height:3rem; border:4px solid #f3f3f3;
+      border-top:4px solid var(--wa-green); border-radius:50%; animation:spin 1s linear infinite;
+      margin:0 auto 1rem; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    img.qr { max-width:250px; width:100%; border:1px solid #ddd; border-radius:.5rem;
+      margin-bottom:1rem; display:none; }
+    #showQrBtn { display:none; margin-top:1rem; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="card">
+    <h2>
+      What’s up<% if (businessName) { %>, <%= businessName %><% } %>? 👋
+    </h2>
+
+    <ul class="nav-pills">
+      <li><span id="tab1" class="nav-link active">1 Business</span></li>
+      <li><span id="tab2" class="nav-link">2 Industry</span></li>
+      <li><span id="tab3" class="nav-link">3 Instructions</span></li>
+    </ul>
+
+    <form id="configForm" action="/setup" method="POST">
+      <!-- STEP 1 -->
+      <div id="step1" class="step active">
+        <label class="form-label">Business Name</label>
+        <input
+          type="text"
+          name="businessName"
+          class="form-control"
+          placeholder="e.g. Acme Plumbing Co."
+          value="<%= businessName %>"
+          required
+        />
+        <button type="button" class="btn btn-wa w-100" id="to2">Next →</button>
+      </div>
+
+      <!-- STEP 2 -->
+      <div id="step2" class="step">
+        <label class="form-label">Industry</label>
+        <select name="industry" class="form-control" required>
+          <option value="">— Select Industry —</option>
+          <option value="Real Estate"     <%= industry==='Real Estate'     ?'selected':''%>>Real Estate</option>
+          <option value="Healthcare"       <%= industry==='Healthcare'       ?'selected':''%>>Healthcare</option>
+          <option value="Security"         <%= industry==='Security'         ?'selected':''%>>Security</option>
+          <option value="Plumbing"         <%= industry==='Plumbing'         ?'selected':''%>>Plumbing</option>
+          <option value="Auto Dealership"  <%= industry==='Auto Dealership'  ?'selected':''%>>Auto Dealership</option>
+          <option value="Legal"            <%= industry==='Legal'            ?'selected':''%>>Legal</option>
+          <option value="Other"            <%= industry==='Other'            ?'selected':''%>>Other</option>
+        </select>
+        <div style="display:flex; justify-content:space-between;">
+          <button type="button" class="btn btn-secondary" id="back2">← Back</button>
+          <button type="button" class="btn btn-wa"       id="to3">Next →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div id="step3" class="step">
+        <label class="form-label">What should your bot do?</label>
+        <textarea
+          name="instructions"
+          class="form-control"
+          rows="4"
+          placeholder="e.g. Ask for name, budget, location..."
+          required
+        ><%= instructions %></textarea>
+        <div style="display:flex; justify-content:space-between;">
+          <button type="button" class="btn btn-secondary" id="back3">← Back</button>
+          <button type="button" class="btn btn-wa" id="generateBtn">
+            Generate →
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Show QR button -->
+    <button id="showQrBtn" class="btn btn-wa w-100">Show QR Code</button>
+  </div>
+</div>
+
+<!-- QR Modal -->
+<div id="qrModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span class="modal-title">Scan this WhatsApp QR</span>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="loader" class="spinner"></div>
+      <img
+        id="qrImage"
+        class="qr"
+        src="data:image/png;base64,<%= qr %>"
+        alt="WhatsApp QR"
+      />
+      <p>Open WhatsApp → Scan QR to connect</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Step navigation
+  const steps = ['step1','step2','step3'];
+  function showStep(n) {
+    steps.forEach((id,i) => {
+      document.getElementById(id).classList.toggle('active', i===n);
+      document.getElementById('tab'+(i+1)).classList.toggle('active', i===n);
+    });
+  }
+  document.getElementById('to2').onclick   = () => showStep(1);
+  document.getElementById('back2').onclick = () => showStep(0);
+  document.getElementById('to3').onclick   = () => showStep(2);
+  document.getElementById('back3').onclick = () => showStep(1);
+
+  // Submit form
+  document.getElementById('generateBtn').onclick = () => {
+    document.getElementById('generateBtn').disabled = true;
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('configForm').submit();
+  };
+
+  // Show QR Modal
+  const showBtn = document.getElementById('showQrBtn');
+  showBtn.onclick = () => {
+    const loader = document.getElementById('loader');
+    const img    = document.getElementById('qrImage');
+    if (img.complete && img.naturalWidth > 0) {
+      loader.style.display = 'none';
+      img.style.display    = 'block';
+    } else {
+      img.onload = () => {
+        loader.style.display = 'none';
+        img.style.display    = 'block';
+      };
+    }
+    document.getElementById('qrModal').classList.add('show');
+  };
+
+  function closeModal() {
+    document.getElementById('qrModal').classList.remove('show');
+  }
+
+  // On reload, reveal Show QR button if qr exists
+  window.addEventListener('DOMContentLoaded', () => {
+    if ('<%= qr %>') {
+      showBtn.style.display = 'block';
+    }
+  });
+</script>
+
+</body>
+</html>
