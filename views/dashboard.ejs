@@ -1,7 +1,6 @@
 <% include('partials/header') %>
 
 <style>
-  /* Make the QR large & crisp */
   .qr-img {
     width: 320px;
     max-width: 100%;
@@ -9,8 +8,6 @@
     image-rendering: pixelated;
     cursor: pointer;
   }
-
-  /* Lightbox overlay */
   .lightbox {
     position: fixed;
     top:0; left:0; right:0; bottom:0;
@@ -51,7 +48,6 @@
         </div>
         <div class="card-body text-center">
           <% if (qr) { %>
-            <!-- tappable QR -->
             <a href="#" id="show-lightbox">
               <img
                 src="data:image/png;base64,<%= qr %>"
@@ -63,7 +59,7 @@
               Tap the QR to view full‑size, then scan with WhatsApp.
             </p>
             <p class="small text-muted">
-              If you opened this on mobile, download and use WhatsApp’s 
+              If you opened this on mobile, download and use WhatsApp’s  
               “Link devices → Scan from gallery” feature.
             </p>
             <a
@@ -103,22 +99,15 @@
 </div>
 
 <script>
-  // open lightbox
-  document
-    .getElementById('show-lightbox')
-    ?.addEventListener('click', e => {
-      e.preventDefault();
-      const src = document.querySelector('.qr-img').src;
-      document.getElementById('lightbox-img').src = src;
-      document.getElementById('lightbox').style.display = 'flex';
-    });
-
-  // close lightbox on click
-  document
-    .getElementById('lightbox')
-    .addEventListener('click', () => {
-      document.getElementById('lightbox').style.display = 'none';
-    });
+  document.getElementById('show-lightbox')?.addEventListener('click', e => {
+    e.preventDefault();
+    const src = document.querySelector('.qr-img').src;
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').style.display = 'flex';
+  });
+  document.getElementById('lightbox').addEventListener('click', () => {
+    document.getElementById('lightbox').style.display = 'none';
+  });
 </script>
 
 <% include('partials/footer') %>
