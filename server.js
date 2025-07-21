@@ -1,14 +1,14 @@
-// server.js
 require('dotenv').config();
 
-const express  = require('express');
-const path     = require('path');
-const mongoose = require('mongoose');
-const session  = require('express-session');
-const flash    = require('connect-flash');
-const passport = require('passport');
-const venom    = require('venom-bot');
-const fetch    = globalThis.fetch || require('node-fetch');
+const express   = require('express');
+const path      = require('path');
+const mongoose  = require('mongoose');
+const session   = require('express-session');
+const flash     = require('connect-flash');
+const passport  = require('passport');
+const venom     = require('venom-bot');
+const fetch     = globalThis.fetch || require('node-fetch');
+const { Buffer } = require('buffer');
 
 // ————— Constants —————
 const SESSION_NAME = 'session-name';
@@ -18,7 +18,7 @@ const PORT         = process.env.PORT || 3000;
 require('./config/passport')(passport);
 mongoose
   .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
+    useNewUrlParser:    true,
     useUnifiedTopology: true
   })
   .then(() => console.log('✅ MongoDB connected'))
@@ -26,35 +26,36 @@ mongoose
 
 // ————— App & Global State —————
 const app = express();
-// Bot configuration from your wizard
-let aiConfig = { businessName:'', industry:'', instructions:'' };
+// Bot config from your wizard
+let aiConfig      = { businessName:'', industry:'', instructions:'' };
 // Per‑user conversation history
-const sessions = {};
-// Latest QR image (base64) for /setup view
-let qrCodeBase64 = null;
+const sessions    = {};
+// Store the latest base64 QR per sessionName
+const qrPerSession = {};
+
+// Latest QR image for default session
+let qrCodeBase64  = null;
 
 // ————— DeepSeek helper —————
 async function askDeepSeek(userInput, conversationHistory = []) {
   if (!aiConfig.businessName) {
     return '🤖 Please complete the setup form at /setup before chatting.';
   }
-
   const systemPrompt =
     `You are a WhatsApp assistant for the *${aiConfig.industry}* business named *${aiConfig.businessName}*.\n`
     + aiConfig.instructions;
 
   const messages = [
-    { role: 'system', content: systemPrompt },
+    { role:'system', content: systemPrompt },
     ...conversationHistory,
-    { role: 'user',   content: userInput }
+    { role:'user',   content: userInput }
   ];
-
   try {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
+      method:  'POST',
       headers: {
         Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-        'Content-Type':  'application/json'
+        'Content-Type':'application/json'
       },
       body: JSON.stringify({
         model:       'deepseek-chat',
@@ -86,13 +87,14 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
 
-// Expose to all EJS views
+// Make these available in *all* your EJS views:
 app.use((req, res, next) => {
   res.locals.user         = req.user;
   res.locals.success_msg  = req.flash('success_msg');
   res.locals.error_msg    = req.flash('error_msg');
   res.locals.error        = req.flash('error');
   res.locals.qr           = qrCodeBase64;
+  res.locals.session      = SESSION_NAME;
   res.locals.businessName = aiConfig.businessName;
   res.locals.industry     = aiConfig.industry;
   res.locals.instructions = aiConfig.instructions;
@@ -117,17 +119,25 @@ app.post('/setup', ensureAuthenticated, (req, res) => {
   res.redirect('/setup');
 });
 
+// ————— Serve raw QR PNG —————
+app.get('/qr/:session/raw', (req, res) => {
+  const sess = req.params.session;
+  const data = qrPerSession[sess];
+  if (!data) return res.status(404).send(`No QR for session ${sess}`);
+  const img = Buffer.from(data, 'base64');
+  res.type('png').send(img);
+});
+
 // ————— Start HTTP & Venom —————
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 
-  // Only now start Venom
   venom
     .create(
       {
-        session:      SESSION_NAME,
-        multidevice:  true,
-        headless:     true,
+        session:     SESSION_NAME,
+        multidevice: true,
+        headless:    true,
         browserArgs: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -136,7 +146,10 @@ app.listen(PORT, () => {
       },
       // QR callback
       base64Qrimg => {
-        qrCodeBase64 = base64Qrimg.replace(/^data:image\/png;base64,/, '');
+        // store it per‑session
+        const raw = base64Qrimg.replace(/^data:image\/png;base64,/, '');
+        qrPerSession[SESSION_NAME] = raw;
+        qrCodeBase64 = raw;
         console.log('🔄 New QR — refresh /setup to view');
       }
     )
@@ -171,7 +184,7 @@ app.listen(PORT, () => {
       });
     })
     .catch(err => {
-      console.error('❌ Venom init failed:', err.message);
-      // Express server stays up, user can still hit /setup
+      console.error('❌ Venom init failed:', err.message || err);
+      // HTTP server stays up so /setup still works
     });
 });

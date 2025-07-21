@@ -1,7 +1,7 @@
 <% include('partials/header') %>
 
 <style>
-  /* Outline button to regenerate QR */
+  /* your green‑outline button */
   .btn-outline-wa {
     border: 2px solid var(--wa-green);
     color: var(--wa-green);
@@ -37,17 +37,32 @@
         </div>
         <div class="card-body text-center">
           <% if (qr) { %>
+            <!-- Inline preview (bigger for scanning) -->
             <img
               src="data:image/png;base64,<%= qr %>"
               class="img-fluid mb-3"
-              style="max-width: 250px;"
+              style="max-width:320px; width:100%; height:auto;"
               alt="WhatsApp QR Code"
             />
-            <p class="text-muted">Scan this QR code with WhatsApp to connect.</p>
+            <p class="text-muted">Scan this QR code with WhatsApp (use a second device).</p>
+            <p>
+              <!-- Link to the raw PNG -->
+              <a
+                href="/qr/<%= session %>/raw"
+                target="_blank"
+                class="btn btn-outline-wa me-2"
+              >🔍 Open Full‑Size QR</a>
+              <!-- Download link -->
+              <a
+                href="/qr/<%= session %>/raw"
+                download="whatsapp-qr-<%= session %>.png"
+                class="btn btn-outline-wa"
+              >⬇️ Download QR</a>
+            </p>
             <button
               type="button"
               onclick="location.href='/setup'"
-              class="btn btn-outline-wa"
+              class="btn btn-outline-wa mt-2"
             >
               Regenerate QR
             </button>
