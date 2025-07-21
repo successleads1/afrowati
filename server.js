@@ -1,3 +1,4 @@
+// server.js
 require('dotenv').config();
 
 const express  = require('express');
@@ -9,43 +10,47 @@ const passport = require('passport');
 const venom    = require('venom-bot');
 const fetch    = globalThis.fetch || require('node-fetch');
 
-const PORT         = process.env.PORT || 3000;
+//
+// ————— Constants & Globals —————
 const SESSION_NAME = 'session-name';
+let qrCodeBase64  = null;
+let aiConfig      = { businessName:'', industry:'', instructions:'' };
+const sessions    = {}; // per‑JID history
 
-// ── Mongo & Passport ──
+//
+// ————— MongoDB & Passport —————
 require('./config/passport')(passport);
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser:    true,
   useUnifiedTopology: true
 })
-.then(() => console.log('✅ MongoDB connected'))
-.catch(err => console.error('❌ MongoDB error:', err));
+.then(()=> console.log('✅ MongoDB connected'))
+.catch(e=> console.error('❌ MongoDB error:', e));
 
-// ── App & Global State ──
-const app = express();
-let aiConfig     = { businessName:'', industry:'', instructions:'' };
-let qrCodeBase64 = null;
-const sessions   = {};
-
-// ── DeepSeek helper ──
-async function askDeepSeek(userInput, conversationHistory = []) {
+//
+// ————— DeepSeek Helper —————
+async function askDeepSeek(userInput, conversationHistory=[]) {
   if (!aiConfig.businessName) {
-    return '🤖 Please complete the setup form at /setup before chatting.';
+    return '🤖 Please complete setup at /setup first.';
   }
-  const systemPrompt =
-    `You are a WhatsApp assistant for the *${aiConfig.industry}* business named *${aiConfig.businessName}*.\n`
-    + aiConfig.instructions;
+
+  const systemPrompt = `
+You are a WhatsApp assistant for the *${aiConfig.industry}* business named *${aiConfig.businessName}*.
+${aiConfig.instructions}
+  `.trim();
+
   const messages = [
-    { role:'system',  content: systemPrompt },
+    { role:'system', content: systemPrompt },
     ...conversationHistory,
-    { role:'user',    content: userInput }
+    { role:'user',   content: userInput }
   ];
+
   try {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-        'Content-Type':  'application/json'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model:       'deepseek-chat',
@@ -54,29 +59,33 @@ async function askDeepSeek(userInput, conversationHistory = []) {
       })
     });
     if (!res.ok) {
-      console.error('DeepSeek error', res.status, await res.text());
-      return '😓 DeepSeek is not available right now.';
+      console.error('DeepSeek HTTP', res.status, await res.text());
+      return '😓 DeepSeek is unavailable.';
     }
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content.trim() || '…';
-  } catch (e) {
-    console.error('DeepSeek fetch error:', e);
-    return '😓 Something went wrong.';
+    const { choices } = await res.json();
+    return choices?.[0]?.message?.content.trim() || '…';
+  } catch (err) {
+    console.error('DeepSeek error:', err);
+    return '😓 Error contacting DeepSeek.';
   }
 }
 
-// ── Express setup ──
-app.use(express.urlencoded({ extended: false }));
-app.use(express.static(path.join(__dirname, 'public')));
+//
+// ————— Express Setup —————
+const app = express();
+app.use(express.urlencoded({ extended:false }));
+app.use(express.static(path.join(__dirname,'public')));
 app.use(session({
-  secret:            process.env.SESSION_SECRET || 'keyboard cat',
-  resave:            false,
-  saveUninitialized: false
+  secret:           process.env.SESSION_SECRET||'keyboard cat',
+  resave:           false,
+  saveUninitialized:false
 }));
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
-app.use((req, res, next) => {
+
+// expose to EJS
+app.use((req,res,next)=>{
   res.locals.user         = req.user;
   res.locals.success_msg  = req.flash('success_msg');
   res.locals.error_msg    = req.flash('error_msg');
@@ -87,70 +96,92 @@ app.use((req, res, next) => {
   res.locals.instructions = aiConfig.instructions;
   next();
 });
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
 
-// ── Routes ──
-app.use('/',     require('./routes/index'));
+app.set('view engine','ejs');
+app.set('views', path.join(__dirname,'views'));
+
+//
+// ————— Routes & Wizard —————
+app.use('/',    require('./routes/index'));
 app.use('/auth', require('./routes/auth'));
 const { ensureAuthenticated } = require('./middleware/auth');
-app.get('/setup', ensureAuthenticated, (req, res) => {
-  res.render('wizard', { title: 'Configure Your Bot' });
+
+app.get('/setup', ensureAuthenticated, (req,res) => {
+  res.render('wizard',{ title:'Configure Your Bot' });
 });
-app.post('/setup', ensureAuthenticated, (req, res) => {
+app.post('/setup', ensureAuthenticated, (req,res) => {
   aiConfig.businessName = req.body.businessName.trim();
   aiConfig.industry     = req.body.industry;
   aiConfig.instructions = req.body.instructions.trim();
   res.redirect('/setup');
 });
 
-// ── Start Venom then HTTP ──
-venom.create({
-    session:     SESSION_NAME,
-    multidevice: true,
-    headless:    'new',
-    logQR:       true,
-    browserArgs: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage'
-    ]
+//
+// ————— Venom + DeepSeek Integration —————
+//
+// On Render, Chromium is installed at /usr/bin/chromium-browser or /usr/bin/chromium.
+// We pick it from env or fallback—then pass the no‑sandbox flags.
+const CHROME_PATH = process.env.CHROME_PATH || '/usr/bin/chromium-browser';
+
+venom
+.create(
+  {
+    session:       SESSION_NAME,
+    multidevice:   true,
+    puppeteerOptions: {
+      headless:      'new',
+      executablePath: CHROME_PATH,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
+    }
   },
-  (base64Qrimg, asciiQR) => {
+  base64Qrimg => {
     qrCodeBase64 = base64Qrimg.replace(/^data:image\/png;base64,/, '');
-    console.log('🔄 New QR — scan or refresh /setup:\n', asciiQR);
+    console.log('🔄 New QR — visit /setup');
   }
 )
 .then(client => {
-  console.log('✅ Venom is ready');
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server listening on http://0.0.0.0:${PORT}`);
-  });
+  console.log('✅ Venom ready');
 
   client.onStateChange(state => {
-    console.log('⚙️  Venom state:', state);
+    console.log('⚙️ Venom state:', state);
     if (['CONFLICT','UNPAIRED','UNLAUNCHED'].includes(state)) {
       client.useHere();
-      console.log('🔄 Session reclaimed');
+      console.log('🔄 Reclaimed session');
     }
   });
 
   client.onMessage(async msg => {
-    const jid = msg.from, txt = msg.body?.trim();
-    if (!txt) return;
-    const sess = sessions[jid] = sessions[jid] || { conversationHistory: [] };
-    sess.conversationHistory.push({ role:'user', content: txt });
-    const reply = await askDeepSeek(txt, sess.conversationHistory);
-    await client.sendText(jid, reply);
-    sess.conversationHistory.push({ role:'assistant', content: reply });
+    console.log('📩', msg.from, msg.body);
+    const jid = msg.from, text = msg.body?.trim();
+    if (!text) return;
+
+    sessions[jid] = sessions[jid] || { conversationHistory: [] };
+    const sess = sessions[jid];
+
+    sess.conversationHistory.push({ role:'user', content:text });
+    const reply = await askDeepSeek(text, sess.conversationHistory);
+
+    try {
+      await client.sendText(jid, reply);
+      console.log('✅ Replied');
+    } catch (e) {
+      console.error('❌ sendText error:', e);
+    }
+
+    sess.conversationHistory.push({ role:'assistant', content:reply });
     if (sess.conversationHistory.length > 20) {
       sess.conversationHistory = sess.conversationHistory.slice(-16);
     }
   });
 })
-.catch(err => {
-  console.error('❌ Venom init failed:', err.message || err);
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server (no WhatsApp) on http://0.0.0.0:${PORT}`);
-  });
-});
+.catch(err => console.error('❌ Venom init failed:', err));
+
+//
+// ————— Start HTTP Server —————
+const PORT = process.env.PORT||3000;
+app.listen(PORT, ()=>console.log(`🚀 Listening on http://localhost:${PORT}`));
