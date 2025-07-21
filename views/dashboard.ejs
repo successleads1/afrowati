@@ -1,90 +1,95 @@
 <% include('partials/header') %>
 
 <style>
-  :root {
-    --wa-green: #25d366;
-    --wa-dark:  #128C7E;
+  /* Make the QR large & crisp */
+  .qr-img {
+    width: 320px;
+    max-width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+    cursor: pointer;
   }
 
-  .container { padding: 3rem 1rem; }
-  .card { border-radius: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-  .card-header.bg-wa { background: var(--wa-green); color: #fff; }
-  .btn-outline-wa {
-    border: 2px solid var(--wa-green);
-    background: transparent;
-    color: var(--wa-green);
-    text-decoration: none !important;
-    transition: background .2s, color .2s;
-  }
-  .btn-outline-wa:hover {
-    background: var(--wa-green);
-    color: #fff;
-  }
-  /* QR image styling */
-  .qr-code {
-    max-width: 360px;
-    width: 100%;
-    height: auto;
-    margin-bottom: 1rem;
-    border: 4px solid #fff;
-    border-radius: 1rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    cursor: zoom-in;
-    transition: transform .2s;
-  }
-  .qr-code:hover { transform: scale(1.05); }
-  /* Lightbox */
-  .qr-lightbox {
+  /* Lightbox overlay */
+  .lightbox {
     position: fixed;
     top:0; left:0; right:0; bottom:0;
     background: rgba(0,0,0,0.8);
-    display:none;
-    justify-content:center;
-    align-items:center;
+    display: none;
+    align-items: center;
+    justify-content: center;
     z-index: 1050;
   }
-  .qr-lightbox img {
+  .lightbox img {
     max-width: 90%;
     max-height: 90%;
-    border-radius: .5rem;
   }
 </style>
 
-<div class="container">
+<div class="container py-5">
   <!-- Welcome -->
-  <div class="row mb-4">
-    <div class="col-md-8 mx-auto">
-      <div class="card text-center">
+  <div class="row justify-content-center mb-4">
+    <div class="col-md-8 col-lg-6">
+      <div class="card shadow-sm text-center">
         <div class="card-body">
-          <h2>Welcome, <%= user.name %>!</h2>
-          <p>Click below to re‑configure your bot or scan the QR code to connect WhatsApp.</p>
+          <h2 class="card-title">Welcome, <%= user.name %>!</h2>
+          <p class="card-text">
+            Configure your bot or scan your WhatsApp QR below.
+          </p>
           <a href="/setup" class="btn btn-wa">Configure Your Bot</a>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- QR Code -->
-  <div class="row">
-    <div class="col-md-8 mx-auto">
-      <div class="card border-success">
-        <div class="card-header bg-wa">
-          <h5 class="mb-0">Your WhatsApp QR Code</h5>
+  <!-- QR Card -->
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <div class="card border-success shadow-sm">
+        <div class="card-header bg-wa text-white">
+          <h5 class="mb-0">WhatsApp QR Code</h5>
         </div>
         <div class="card-body text-center">
           <% if (qr) { %>
-            <img
-              src="data:image/png;base64,<%= qr %>"
-              alt="WhatsApp QR Code"
-              class="qr-code"
-              id="qrImg"
-            />
-            <p class="text-muted">Tap or hover to enlarge, then scan from your phone.</p>
+            <!-- tappable QR -->
+            <a href="#" id="show-lightbox">
+              <img
+                src="data:image/png;base64,<%= qr %>"
+                class="qr-img mb-3"
+                alt="WhatsApp QR Code"
+              />
+            </a>
+            <p class="text-muted">
+              Tap the QR to view full‑size, then scan with WhatsApp.
+            </p>
+            <p class="small text-muted">
+              If you opened this on mobile, download and use WhatsApp’s 
+              “Link devices → Scan from gallery” feature.
+            </p>
+            <a
+              href="data:image/png;base64,<%= qr %>"
+              download="whatsapp-qr.png"
+              class="btn btn-wa mb-2"
+            >
+              Download QR
+            </a>
             <br/>
-            <a href="/setup" class="btn btn-outline-wa">Regenerate QR</a>
+            <button
+              type="button"
+              onclick="location.reload()"
+              class="btn btn-outline-wa"
+            >
+              Regenerate QR
+            </button>
           <% } else { %>
-            <div class="spinner-border text-success" style="width:3rem; height:3rem;" role="status"></div>
-            <p class="text-muted mt-2">QR not ready. Configure your bot and refresh this page.</p>
+            <div
+              class="spinner-border text-success mb-3"
+              style="width:3rem;height:3rem;"
+              role="status"
+            ></div>
+            <p class="text-muted">
+              QR not ready yet. Please configure your bot and refresh.
+            </p>
           <% } %>
         </div>
       </div>
@@ -92,18 +97,28 @@
   </div>
 </div>
 
-<!-- Lightbox overlay -->
-<div id="lightbox" class="qr-lightbox" onclick="this.style.display='none'">
-  <img id="lightbox-img" src="" alt="Enlarged QR Code">
+<!-- Lightbox -->
+<div id="lightbox" class="lightbox">
+  <img id="lightbox-img" src="" alt="Full‑size QR"/>
 </div>
 
 <script>
-  // Clicking the QR image opens it full‑screen
-  document.getElementById('qrImg')?.addEventListener('click', e => {
-    const lb = document.getElementById('lightbox');
-    document.getElementById('lightbox-img').src = e.target.src;
-    lb.style.display = 'flex';
-  });
+  // open lightbox
+  document
+    .getElementById('show-lightbox')
+    ?.addEventListener('click', e => {
+      e.preventDefault();
+      const src = document.querySelector('.qr-img').src;
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox').style.display = 'flex';
+    });
+
+  // close lightbox on click
+  document
+    .getElementById('lightbox')
+    .addEventListener('click', () => {
+      document.getElementById('lightbox').style.display = 'none';
+    });
 </script>
 
 <% include('partials/footer') %>
