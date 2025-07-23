@@ -1,193 +1,256 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title><%= title || 'Configure Your Bot' %></title>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <style>
-    :root { --wa-green: #25d366; --wa-light: #e5fff5; }
-    body { margin:0; padding:0; background:var(--wa-light); font-family:'Segoe UI',sans-serif; }
-    .container { max-width:600px; margin:2rem auto; padding:1rem; }
-    .card { background:#fff; border-radius:.75rem; box-shadow:0 2px 12px rgba(0,0,0,0.1); padding:1.5rem; }
-    h2 { text-align:center; margin-bottom:1.5rem; font-size:1.75rem; }
-    .nav-pills { display:flex; justify-content:center; gap:.5rem; list-style:none; padding:0; margin-bottom:1.5rem; }
-    .nav-pills .nav-link { padding:.5rem 1rem; border-radius:999px; background:#ccc; color:#333; cursor:default; }
-    .nav-pills .active { background:var(--wa-green); color:#fff; }
-    .step { display:none; animation:fadeIn .5s ease-out; }
-    .step.active { display:block; }
-    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-    .form-label { display:block; margin-bottom:.5rem; font-weight:600; }
-    .form-control, select, textarea {
-      width:100%; padding:.75rem; border:1px solid #ccc; border-radius:.5rem;
-      margin-bottom:1rem; font-size:1rem; resize:vertical;
-    }
-    .btn { display:inline-block; padding:.75rem 1.25rem; border:none; border-radius:.5rem;
-      cursor:pointer; font-size:1rem; }
-    .btn-wa { background:var(--wa-green); color:#fff; }
-    .btn-wa:hover { background:#1ebe5a; }
-    .btn-secondary { background:#6c757d; color:#fff; }
-    .btn:disabled { opacity:.6; cursor:not-allowed; }
-    /* Modal */
-    .modal { position:fixed; top:0; left:0; width:100%; height:100%;
-      background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center;
-      visibility:hidden; opacity:0; transition:visibility .3s, opacity .3s; }
-    .modal.show { visibility:visible; opacity:1; }
-    .modal-content { background:#fff; border-radius:.75rem; max-width:90%; width:400px; overflow:hidden; }
-    .modal-header { background:var(--wa-green); color:#fff; padding:.75rem 1rem;
-      display:flex; justify-content:space-between; align-items:center; }
-    .modal-title { margin:0; font-size:1.25rem; }
-    .btn-close { background:none; border:none; font-size:1.25rem; color:#fff; cursor:pointer; }
-    .modal-body { text-align:center; padding:1rem; }
-    .spinner { width:3rem; height:3rem; border:4px solid #f3f3f3;
-      border-top:4px solid var(--wa-green); border-radius:50%; animation:spin 1s linear infinite;
-      margin:0 auto 1rem; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    img.qr { max-width:250px; width:100%; border:1px solid #ddd; border-radius:.5rem;
-      margin-bottom:1rem; display:none; }
-    #showQrBtn { display:none; margin-top:1rem; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: #f5f5f5; 
+        }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        .qr-container { 
+            display: flex; 
+            align-items: center; 
+            gap: 20px; 
+            padding: 15px; 
+            background: #f9f9f9; 
+            border-radius: 5px; 
+            margin: 10px 0; 
+        }
+        .qr-code { max-width: 200px; border: 1px solid #ddd; }
+        .session-info { flex: 1; }
+        .status { 
+            padding: 5px 10px; 
+            border-radius: 15px; 
+            font-size: 12px; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+        }
+        .status.connected { background: #d4edda; color: #155724; }
+        .status.qr_ready { background: #fff3cd; color: #856404; }
+        .status.initializing { background: #cce7ff; color: #004085; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .btn { 
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-size: 14px; 
+            margin: 5px; 
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select, .form-group textarea { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+            box-sizing: border-box; 
+        }
+        .alert { 
+            padding: 15px; 
+            margin: 15px 0; 
+            border-radius: 5px; 
+        }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .sessions-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); 
+            gap: 20px; 
+            margin-top: 20px; 
+        }
+        .session-card { 
+            border: 1px solid #ddd; 
+            border-radius: 10px; 
+            padding: 20px; 
+            background: white; 
+        }
+        .session-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 15px; 
+            padding-bottom: 10px; 
+            border-bottom: 1px solid #eee; 
+        }
+        .no-sessions { 
+            text-align: center; 
+            color: #666; 
+            font-style: italic; 
+            padding: 40px; 
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <h1><%= title %></h1>
+        
+        <!-- Flash Messages -->
+        <% if (success_msg && success_msg.length > 0) { %>
+            <div class="alert alert-success"><%= success_msg %></div>
+        <% } %>
+        <% if (error_msg && error_msg.length > 0) { %>
+            <div class="alert alert-danger"><%= error_msg %></div>
+        <% } %>
 
-<div class="container">
-  <div class="card">
-    <h2>
-      What’s up<% if (businessName) { %>, <%= businessName %><% } %>? 👋
-    </h2>
-
-    <ul class="nav-pills">
-      <li><span id="tab1" class="nav-link active">1 Business</span></li>
-      <li><span id="tab2" class="nav-link">2 Industry</span></li>
-      <li><span id="tab3" class="nav-link">3 Instructions</span></li>
-    </ul>
-
-    <form id="configForm" action="/setup" method="POST">
-      <!-- STEP 1 -->
-      <div id="step1" class="step active">
-        <label class="form-label">Business Name</label>
-        <input
-          type="text"
-          name="businessName"
-          class="form-control"
-          placeholder="e.g. Acme Plumbing Co."
-          value="<%= businessName %>"
-          required
-        />
-        <button type="button" class="btn btn-wa w-100" id="to2">Next →</button>
-      </div>
-
-      <!-- STEP 2 -->
-      <div id="step2" class="step">
-        <label class="form-label">Industry</label>
-        <select name="industry" class="form-control" required>
-          <option value="">— Select Industry —</option>
-          <option value="Real Estate"     <%= industry==='Real Estate'     ?'selected':''%>>Real Estate</option>
-          <option value="Healthcare"       <%= industry==='Healthcare'       ?'selected':''%>>Healthcare</option>
-          <option value="Security"         <%= industry==='Security'         ?'selected':''%>>Security</option>
-          <option value="Plumbing"         <%= industry==='Plumbing'         ?'selected':''%>>Plumbing</option>
-          <option value="Auto Dealership"  <%= industry==='Auto Dealership'  ?'selected':''%>>Auto Dealership</option>
-          <option value="Legal"            <%= industry==='Legal'            ?'selected':''%>>Legal</option>
-          <option value="Other"            <%= industry==='Other'            ?'selected':''%>>Other</option>
-        </select>
-        <div style="display:flex; justify-content:space-between;">
-          <button type="button" class="btn btn-secondary" id="back2">← Back</button>
-          <button type="button" class="btn btn-wa"       id="to3">Next →</button>
+        <!-- Bot Configuration Section -->
+        <div class="section">
+            <h2>🤖 Bot Configuration</h2>
+            <form method="POST" action="/setup">
+                <div class="form-group">
+                    <label for="businessName">Business Name:</label>
+                    <input type="text" id="businessName" name="businessName" 
+                           value="<%= businessName %>" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="industry">Industry:</label>
+                    <select id="industry" name="industry" required>
+                        <option value="">Select Industry</option>
+                        <option value="retail" <%= industry === 'retail' ? 'selected' : '' %>>Retail</option>
+                        <option value="healthcare" <%= industry === 'healthcare' ? 'selected' : '' %>>Healthcare</option>
+                        <option value="technology" <%= industry === 'technology' ? 'selected' : '' %>>Technology</option>
+                        <option value="finance" <%= industry === 'finance' ? 'selected' : '' %>>Finance</option>
+                        <option value="education" <%= industry === 'education' ? 'selected' : '' %>>Education</option>
+                        <option value="hospitality" <%= industry === 'hospitality' ? 'selected' : '' %>>Hospitality</option>
+                        <option value="other" <%= industry === 'other' ? 'selected' : '' %>>Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="instructions">Custom Instructions:</label>
+                    <textarea id="instructions" name="instructions" rows="4" 
+                              placeholder="Add specific instructions for your AI assistant..."><%= instructions %></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">💾 Update Configuration</button>
+            </form>
         </div>
-      </div>
 
-      <!-- STEP 3 -->
-      <div id="step3" class="step">
-        <label class="form-label">What should your bot do?</label>
-        <textarea
-          name="instructions"
-          class="form-control"
-          rows="4"
-          placeholder="e.g. Ask for name, budget, location..."
-          required
-        ><%= instructions %></textarea>
-        <div style="display:flex; justify-content:space-between;">
-          <button type="button" class="btn btn-secondary" id="back3">← Back</button>
-          <button type="button" class="btn btn-wa" id="generateBtn">
-            Generate →
-          </button>
+        <!-- WhatsApp Sessions Section -->
+        <div class="section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>📱 WhatsApp Sessions</h2>
+                <form method="POST" action="/whatsapp/create" style="margin: 0;">
+                    <button type="submit" class="btn btn-success">➕ Add New Number</button>
+                </form>
+            </div>
+
+            <% if (whatsappSessions && whatsappSessions.length > 0) { %>
+                <div class="sessions-grid">
+                    <% whatsappSessions.forEach(session => { %>
+                        <div class="session-card">
+                            <div class="session-header">
+                                <div>
+                                    <strong>Session: <%= session.id.substring(0, 20) %>...</strong>
+                                    <br>
+                                    <span class="status <%= session.status %>"><%= session.status %></span>
+                                </div>
+                                <button onclick="deleteSession('<%= session.id %>')" class="btn btn-danger">🗑️ Delete</button>
+                            </div>
+
+                            <div class="session-info">
+                                <p><strong>Connected Chats:</strong> <%= session.connectedChats %></p>
+                                
+                                <% if (session.error) { %>
+                                    <div class="alert alert-danger" style="margin: 10px 0;">
+                                        <strong>Error:</strong> <%= session.error %>
+                                    </div>
+                                <% } %>
+
+                                <% if (session.status === 'qr_ready' && session.qrCode) { %>
+                                    <div style="margin: 15px 0;">
+                                        <p><strong>📱 Scan this QR code with WhatsApp:</strong></p>
+                                        <img src="data:image/png;base64,<%= session.qrCode %>" 
+                                             alt="WhatsApp QR Code" class="qr-code">
+                                        <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                                            Open WhatsApp → Menu → Linked Devices → Link a Device
+                                        </p>
+                                    </div>
+                                <% } else if (session.status === 'connected') { %>
+                                    <div style="margin: 15px 0; padding: 10px; background: #d4edda; border-radius: 5px;">
+                                        ✅ <strong>Connected!</strong> This number is ready to receive messages.
+                                    </div>
+                                <% } else if (session.status === 'initializing') { %>
+                                    <div style="margin: 15px 0; padding: 10px; background: #cce7ff; border-radius: 5px;">
+                                        ⏳ <strong>Initializing...</strong> Please wait for QR code.
+                                    </div>
+                                <% } %>
+
+                                <button onclick="refreshSession('<%= session.id %>')" class="btn btn-primary">
+                                    🔄 Refresh Status
+                                </button>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            <% } else { %>
+                <div class="no-sessions">
+                    <p>No WhatsApp sessions yet. Click "Add New Number" to get started!</p>
+                </div>
+            <% } %>
         </div>
-      </div>
-    </form>
-
-    <!-- Show QR button -->
-    <button id="showQrBtn" class="btn btn-wa w-100">Show QR Code</button>
-  </div>
-</div>
-
-<!-- QR Modal -->
-<div id="qrModal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <span class="modal-title">Scan this WhatsApp QR</span>
-      <button class="btn-close" onclick="closeModal()">✕</button>
     </div>
-    <div class="modal-body">
-      <div id="loader" class="spinner"></div>
-      <img
-        id="qrImage"
-        class="qr"
-        src="data:image/png;base64,<%= qr %>"
-        alt="WhatsApp QR"
-      />
-      <p>Open WhatsApp → Scan QR to connect</p>
-    </div>
-  </div>
-</div>
 
-<script>
-  // Step navigation
-  const steps = ['step1','step2','step3'];
-  function showStep(n) {
-    steps.forEach((id,i) => {
-      document.getElementById(id).classList.toggle('active', i===n);
-      document.getElementById('tab'+(i+1)).classList.toggle('active', i===n);
-    });
-  }
-  document.getElementById('to2').onclick   = () => showStep(1);
-  document.getElementById('back2').onclick = () => showStep(0);
-  document.getElementById('to3').onclick   = () => showStep(2);
-  document.getElementById('back3').onclick = () => showStep(1);
+    <script>
+        async function deleteSession(sessionId) {
+            if (!confirm('Are you sure you want to delete this WhatsApp session?')) {
+                return;
+            }
 
-  // Submit form
-  document.getElementById('generateBtn').onclick = () => {
-    document.getElementById('generateBtn').disabled = true;
-    document.getElementById('loader').style.display = 'block';
-    document.getElementById('configForm').submit();
-  };
+            try {
+                const response = await fetch(`/whatsapp/${sessionId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
 
-  // Show QR Modal
-  const showBtn = document.getElementById('showQrBtn');
-  showBtn.onclick = () => {
-    const loader = document.getElementById('loader');
-    const img    = document.getElementById('qrImage');
-    if (img.complete && img.naturalWidth > 0) {
-      loader.style.display = 'none';
-      img.style.display    = 'block';
-    } else {
-      img.onload = () => {
-        loader.style.display = 'none';
-        img.style.display    = 'block';
-      };
-    }
-    document.getElementById('qrModal').classList.add('show');
-  };
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Failed to delete session');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting session');
+            }
+        }
 
-  function closeModal() {
-    document.getElementById('qrModal').classList.remove('show');
-  }
+        async function refreshSession(sessionId) {
+            try {
+                const response = await fetch(`/whatsapp/${sessionId}/status`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    location.reload(); // Simple refresh for now
+                } else {
+                    alert('Failed to refresh session status');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error refreshing session');
+            }
+        }
 
-  // On reload, reveal Show QR button if qr exists
-  window.addEventListener('DOMContentLoaded', () => {
-    if ('<%= qr %>') {
-      showBtn.style.display = 'block';
-    }
-  });
-</script>
-
+        // Auto-refresh page every 30 seconds to update QR codes and status
+        setInterval(() => {
+            // Only refresh if there are initializing sessions
+            const initializingSessions = document.querySelectorAll('.status.initializing, .status.qr_ready');
+            if (initializingSessions.length > 0) {
+                location.reload();
+            }
+        }, 30000);
+    </script>
 </body>
 </html>

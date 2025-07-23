@@ -2,11 +2,13 @@
 
 <style>
   .qr-img {
-    width: 320px;
+    width: 200px;
     max-width: 100%;
     height: auto;
     image-rendering: pixelated;
     cursor: pointer;
+    border: 2px solid #ddd;
+    border-radius: 8px;
   }
   .lightbox {
     position: fixed;
@@ -20,93 +22,412 @@
   .lightbox img {
     max-width: 90%;
     max-height: 90%;
+    border-radius: 8px;
+  }
+  .session-card {
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .session-header {
+    background: linear-gradient(135deg, #25d366, #128c7e);
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  .status-connected { background: #d4edda; color: #155724; }
+  .status-qr_ready { background: #fff3cd; color: #856404; }
+  .status-initializing { background: #cce7ff; color: #004085; }
+  .status-error { background: #f8d7da; color: #721c24; }
+  .status-disconnected { background: #f8d7da; color: #721c24; }
+  .session-info {
+    padding: 20px;
+  }
+  .qr-section {
+    text-align: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin: 15px 0;
+  }
+  .stats-row {
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+    margin: 15px 0;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+  }
+  .stat-item h6 {
+    margin: 0;
+    color: #6c757d;
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+  .stat-item span {
+    font-size: 24px;
+    font-weight: bold;
+    color: #25d366;
+  }
+  .no-sessions {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6c757d;
+  }
+  .no-sessions i {
+    font-size: 48px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+  }
+  .btn-wa-outline {
+    color: #25d366;
+    border-color: #25d366;
+  }
+  .btn-wa-outline:hover {
+    background: #25d366;
+    color: white;
+  }
+  .refresh-timer {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 10px;
   }
 </style>
 
 <div class="container py-5">
-  <!-- Welcome -->
+  <!-- Welcome Section -->
   <div class="row justify-content-center mb-4">
-    <div class="col-md-8 col-lg-6">
+    <div class="col-md-10 col-lg-8">
       <div class="card shadow-sm text-center">
         <div class="card-body">
-          <h2 class="card-title">Welcome, <%= user.name %>!</h2>
-          <p class="card-text">
-            Configure your bot or scan your WhatsApp QR below.
+          <h2 class="card-title">
+            <i class="fas fa-robot me-2"></i>
+            Welcome, <%= user.name %>!
+          </h2>
+          <p class="card-text mb-4">
+            Manage your WhatsApp AI assistant sessions and configure your bot settings.
           </p>
-          <a href="/setup" class="btn btn-wa">Configure Your Bot</a>
+          <div class="d-flex justify-content-center gap-2 flex-wrap">
+            <a href="/setup" class="btn btn-wa">
+              <i class="fas fa-cog me-2"></i>Configure Bot
+            </a>
+            <form method="POST" action="/whatsapp/create" class="d-inline">
+              <button type="submit" class="btn btn-success">
+                <i class="fas fa-plus me-2"></i>Add New Number
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- QR Card -->
-  <div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-      <div class="card border-success shadow-sm">
-        <div class="card-header bg-wa text-white">
-          <h5 class="mb-0">WhatsApp QR Code</h5>
-        </div>
-        <div class="card-body text-center">
-          <% if (qr) { %>
-            <a href="#" id="show-lightbox">
-              <img
-                src="data:image/png;base64,<%= qr %>"
-                class="qr-img mb-3"
-                alt="WhatsApp QR Code"
-              />
-            </a>
-            <p class="text-muted">
-              Tap the QR to view full‑size, then scan with WhatsApp.
-            </p>
-            <p class="small text-muted">
-              If you opened this on mobile, download and use WhatsApp’s  
-              “Link devices → Scan from gallery” feature.
-            </p>
-            <a
-              href="data:image/png;base64,<%= qr %>"
-              download="whatsapp-qr.png"
-              class="btn btn-wa mb-2"
-            >
-              Download QR
-            </a>
-            <br/>
-            <button
-              type="button"
-              onclick="location.reload()"
-              class="btn btn-outline-wa"
-            >
-              Regenerate QR
-            </button>
-          <% } else { %>
-            <div
-              class="spinner-border text-success mb-3"
-              style="width:3rem;height:3rem;"
-              role="status"
-            ></div>
-            <p class="text-muted">
-              QR not ready yet. Please configure your bot and refresh.
-            </p>
-          <% } %>
+  <!-- Bot Status Overview -->
+  <% if (businessName) { %>
+    <div class="row justify-content-center mb-4">
+      <div class="col-md-10 col-lg-8">
+        <div class="card border-success">
+          <div class="card-header bg-success text-white">
+            <h6 class="mb-0">
+              <i class="fas fa-info-circle me-2"></i>Bot Configuration
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-4">
+                <strong>Business:</strong> <%= businessName %>
+              </div>
+              <div class="col-md-4">
+                <strong>Industry:</strong> <%= industry %>
+              </div>
+              <div class="col-md-4">
+                <strong>Sessions:</strong> <%= whatsappSessions ? whatsappSessions.length : 0 %>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+    </div>
+  <% } %>
+
+  <!-- WhatsApp Sessions -->
+  <div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+      <% if (whatsappSessions && whatsappSessions.length > 0) { %>
+        <h4 class="mb-4">
+          <i class="fab fa-whatsapp me-2 text-success"></i>
+          WhatsApp Sessions (<%= whatsappSessions.length %>)
+        </h4>
+        
+        <% whatsappSessions.forEach((session, index) => { %>
+          <div class="session-card">
+            <div class="session-header">
+              <div>
+                <h6 class="mb-1">
+                  <i class="fas fa-mobile-alt me-2"></i>
+                  Session #<%= index + 1 %>
+                </h6>
+                <small><%= session.id.substring(0, 30) %>...</small>
+              </div>
+              <div class="d-flex align-items-center gap-3">
+                <span class="status-badge status-<%= session.status %>">
+                  <%= session.status.replace('_', ' ') %>
+                </span>
+                <button onclick="deleteSession('<%= session.id %>')" 
+                        class="btn btn-sm btn-outline-light">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="session-info">
+              <!-- Session Stats -->
+              <div class="stats-row">
+                <div class="stat-item">
+                  <h6>Status</h6>
+                  <span class="status-<%= session.status %>">
+                    <% if (session.status === 'connected') { %>
+                      <i class="fas fa-check-circle text-success"></i>
+                    <% } else if (session.status === 'qr_ready') { %>
+                      <i class="fas fa-qrcode text-warning"></i>
+                    <% } else if (session.status === 'initializing') { %>
+                      <i class="fas fa-spinner fa-spin text-primary"></i>
+                    <% } else { %>
+                      <i class="fas fa-exclamation-circle text-danger"></i>
+                    <% } %>
+                  </span>
+                </div>
+                <div class="stat-item">
+                  <h6>Chats</h6>
+                  <span><%= session.connectedChats %></span>
+                </div>
+                <div class="stat-item">
+                  <h6>Actions</h6>
+                  <span>
+                    <button onclick="refreshSession('<%= session.id %>')" 
+                            class="btn btn-sm btn-wa-outline">
+                      <i class="fas fa-sync-alt"></i>
+                    </button>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Error Display -->
+              <% if (session.error) { %>
+                <div class="alert alert-danger" role="alert">
+                  <i class="fas fa-exclamation-triangle me-2"></i>
+                  <strong>Error:</strong> <%= session.error %>
+                </div>
+              <% } %>
+
+              <!-- QR Code Section -->
+              <% if (session.status === 'qr_ready' && session.qrCode) { %>
+                <div class="qr-section">
+                  <h6 class="mb-3">
+                    <i class="fas fa-qrcode me-2"></i>
+                    Scan QR Code with WhatsApp
+                  </h6>
+                  <a href="#" onclick="showLightbox('<%= session.qrCode %>')">
+                    <img
+                      src="data:image/png;base64,<%= session.qrCode %>"
+                      class="qr-img mb-3"
+                      alt="WhatsApp QR Code for Session <%= index + 1 %>"
+                    />
+                  </a>
+                  <div class="mt-3">
+                    <p class="text-muted small mb-2">
+                      <i class="fas fa-mobile-alt me-1"></i>
+                      Open WhatsApp → Menu → Linked Devices → Link a Device
+                    </p>
+                    <div class="d-flex justify-content-center gap-2 flex-wrap">
+                      <a
+                        href="data:image/png;base64,<%= session.qrCode %>"
+                        download="whatsapp-qr-session-<%= index + 1 %>.png"
+                        class="btn btn-sm btn-wa"
+                      >
+                        <i class="fas fa-download me-1"></i>Download QR
+                      </a>
+                      <button
+                        type="button"
+                        onclick="refreshSession('<%= session.id %>')"
+                        class="btn btn-sm btn-outline-wa"
+                      >
+                        <i class="fas fa-redo me-1"></i>Regenerate
+                      </button>
+                    </div>
+                  </div>
+                  <div class="refresh-timer">
+                    <i class="fas fa-clock me-1"></i>Auto-refresh in <span id="timer-<%= index %>">30</span>s
+                  </div>
+                </div>
+              <% } else if (session.status === 'connected') { %>
+                <div class="alert alert-success text-center" role="alert">
+                  <i class="fas fa-check-circle me-2"></i>
+                  <strong>Connected!</strong> This number is ready to receive messages.
+                  <% if (session.connectedChats > 0) { %>
+                    <br><small>Currently handling <%= session.connectedChats %> active chat(s)</small>
+                  <% } %>
+                </div>
+              <% } else if (session.status === 'initializing') { %>
+                <div class="text-center py-4">
+                  <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                  <p class="text-muted">
+                    <i class="fas fa-cog fa-spin me-2"></i>
+                    Initializing session... Please wait for QR code.
+                  </p>
+                </div>
+              <% } %>
+            </div>
+          </div>
+        <% }); %>
+
+      <% } else { %>
+        <!-- No Sessions State -->
+        <div class="card">
+          <div class="card-body no-sessions">
+            <i class="fab fa-whatsapp text-success"></i>
+            <h5>No WhatsApp Sessions</h5>
+            <p class="mb-4">
+              Get started by adding your first WhatsApp number to begin receiving messages.
+            </p>
+            <% if (!businessName) { %>
+              <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Please configure your bot settings first before adding WhatsApp numbers.
+              </div>
+              <a href="/setup" class="btn btn-wa">
+                <i class="fas fa-cog me-2"></i>Configure Bot First
+              </a>
+            <% } else { %>
+              <form method="POST" action="/whatsapp/create" class="d-inline">
+                <button type="submit" class="btn btn-wa">
+                  <i class="fas fa-plus me-2"></i>Add Your First Number
+                </button>
+              </form>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
     </div>
   </div>
 </div>
 
 <!-- Lightbox -->
 <div id="lightbox" class="lightbox">
-  <img id="lightbox-img" src="" alt="Full‑size QR"/>
+  <img id="lightbox-img" src="" alt="Full‑size QR Code"/>
 </div>
 
 <script>
-  document.getElementById('show-lightbox')?.addEventListener('click', e => {
-    e.preventDefault();
-    const src = document.querySelector('.qr-img').src;
-    document.getElementById('lightbox-img').src = src;
+  // Lightbox functionality
+  function showLightbox(qrCode) {
+    event.preventDefault();
+    document.getElementById('lightbox-img').src = `data:image/png;base64,${qrCode}`;
     document.getElementById('lightbox').style.display = 'flex';
-  });
+  }
+
   document.getElementById('lightbox').addEventListener('click', () => {
     document.getElementById('lightbox').style.display = 'none';
+  });
+
+  // Session management functions
+  async function deleteSession(sessionId) {
+    if (!confirm('Are you sure you want to delete this WhatsApp session? This will disconnect the linked device.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/whatsapp/${sessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        // Show success message and reload
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+        alertDiv.innerHTML = `
+          <i class="fas fa-check-circle me-2"></i>
+          Session deleted successfully!
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild);
+        
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        throw new Error('Failed to delete session');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error deleting session. Please try again.');
+    }
+  }
+
+  async function refreshSession(sessionId) {
+    try {
+      const response = await fetch(`/whatsapp/${sessionId}/status`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        location.reload();
+      } else {
+        alert('Failed to refresh session status');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error refreshing session');
+    }
+  }
+
+  // Auto-refresh functionality
+  let refreshCountdown = 30;
+  
+  function updateTimers() {
+    const timerElements = document.querySelectorAll('[id^="timer-"]');
+    timerElements.forEach(timer => {
+      timer.textContent = refreshCountdown;
+    });
+    
+    refreshCountdown--;
+    
+    if (refreshCountdown < 0) {
+      // Check if there are any QR codes or initializing sessions
+      const needsRefresh = document.querySelectorAll('.status-initializing, .status-qr_ready').length > 0;
+      if (needsRefresh) {
+        location.reload();
+      } else {
+        refreshCountdown = 30; // Reset timer
+      }
+    }
+  }
+
+  // Start timer if there are sessions that need refreshing
+  const needsRefresh = document.querySelectorAll('.status-initializing, .status-qr_ready').length > 0;
+  if (needsRefresh) {
+    updateTimers(); // Initial call
+    setInterval(updateTimers, 1000);
+  }
+
+  // Page visibility API to pause/resume timer when tab is not active
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && needsRefresh) {
+      // Page became visible again, refresh immediately
+      location.reload();
+    }
   });
 </script>
 
